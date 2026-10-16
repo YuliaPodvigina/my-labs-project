@@ -17,14 +17,11 @@ public class Main {
 
     public static void main(String[] args) {
         try {
-            // 1. Считываем данные в Deque
             Deque<Character> deque = readCharacters(INPUT_PATH);
             System.out.println("Считано персонажей: " + deque.size());
 
-            // 2. Обрабатываем (поочередный опрос с головы и хвоста)
             List<String> orderedNames = processDeque(deque);
 
-            // 3. Записываем результат в файл
             writeResults(OUTPUT_PATH, orderedNames);
             System.out.println("Результаты успешно записаны в: " + OUTPUT_PATH);
 
@@ -33,14 +30,11 @@ public class Main {
         }
     }
 
-    /**
-     * Читает CSV-файл и возвращает двустороннюю очередь персонажей.
-     */
     private static Deque<Character> readCharacters(String filePath) throws IOException {
         Deque<Character> deque = new ArrayDeque<>();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-            String line = reader.readLine(); // Пропускаем заголовок
+            String line = reader.readLine();
 
             while ((line = reader.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -54,7 +48,6 @@ public class Main {
                         String name = parts[1].trim();
                         deque.addLast(new Character(id, name));
                     } catch (NumberFormatException ignored) {
-                        // Пропускаем некорректные строки с невалидным числовым id
                     }
                 }
             }
@@ -63,9 +56,6 @@ public class Main {
         return deque;
     }
 
-    /**
-     * Извлекает имена поочередно: сначала с начала (головы), затем с конца (хвоста).
-     */
     private static List<String> processDeque(Deque<Character> deque) {
         List<String> result = new ArrayList<>();
         boolean takeFromHead = true;
@@ -74,24 +64,21 @@ public class Main {
             Character character;
 
             if (takeFromHead) {
-                character = deque.pollFirst(); // забираем с головы
+                character = deque.pollFirst();
             } else {
-                character = deque.pollLast();  // забираем с хвоста
+                character = deque.pollLast();
             }
 
             if (character != null) {
                 result.add(character.getName());
             }
 
-            takeFromHead = !takeFromHead; // меняем сторону
+            takeFromHead = !takeFromHead;
         }
 
         return result;
     }
 
-    /**
-     * Сохраняет порядок извлеченных имен в выходной текстовый файл.
-     */
     private static void writeResults(String filePath, List<String> names) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
             writer.println("Order,Name");
