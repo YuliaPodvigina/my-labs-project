@@ -3,106 +3,104 @@ package com.podvigina.labs;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.PrintWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 
 public class Main {
 
-    // Обычный вспомогательный класс под объект из CSV
-    static class Character {
-        private int id;
-        private String name;
+    private static final String INPUT_PATH = "characters.csv";
+    private static final String OUTPUT_PATH = "result.txt";
 
-        public Character(int id, String name) {
-            this.id = id;
-            this.name = name;
-        }
+    public static void main(String[] args) {
+        try {
+            // 1. Считываем данные в Deque
+            Deque<Character> deque = readCharacters(INPUT_PATH);
+            System.out.println("Считано персонажей: " + deque.size());
 
-        public int getId() {
-            return id;
-        }
+            // 2. Обрабатываем (поочередный опрос с головы и хвоста)
+            List<String> orderedNames = processDeque(deque);
 
-        public String getName() {
-            return name;
+            // 3. Записываем результат в файл
+            writeResults(OUTPUT_PATH, orderedNames);
+            System.out.println("Результаты успешно записаны в: " + OUTPUT_PATH);
+
+        } catch (IOException e) {
+            System.err.println("Ошибка при работе с файлом: " + e.getMessage());
         }
     }
 
-    public static void main(String[] args) {
-        String inputPath = "characters.csv";
-        String outputPath = "result.txt";
-
-        // По заданию используем Deque (ArrayDeque)
+    /**
+     * Читает CSV-файл и возвращает двустороннюю очередь персонажей.
+     */
+    private static Deque<Character> readCharacters(String filePath) throws IOException {
         Deque<Character> deque = new ArrayDeque<>();
 
-        // 1. Читаем данные из файла
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(inputPath));
-
-            // Пропускаем шапку таблицы
-            String line = reader.readLine();
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line = reader.readLine(); // Пропускаем заголовок
 
             while ((line = reader.readLine()) != null) {
-                // Если строка пустая, идем дальше
                 if (line.trim().isEmpty()) {
                     continue;
                 }
 
-                // Разбиваем по запятой
                 String[] parts = line.split(",");
-
                 if (parts.length >= 2) {
-                    int id = Integer.parseInt(parts[0].trim());
-                    String name = parts[1].trim();
-
-                    // Кладем в конец очереди
-                    deque.addLast(new Character(id, name));
+                    try {
+                        int id = Integer.parseInt(parts[0].trim());
+                        String name = parts[1].trim();
+                        deque.addLast(new Character(id, name));
+                    } catch (NumberFormatException ignored) {
+                        // Пропускаем некорректные строки с невалидным числовым id
+                    }
                 }
             }
-            reader.close();
-            System.out.println("Файл прочитан. Всего персонажей в очереди: " + deque.size());
-
-        } catch (IOException e) {
-            System.out.println("Ошибка при чтении файла: " + e.getMessage());
-            return;
-        } catch (NumberFormatException e) {
-            System.out.println("Ошибка парсинга числа: " + e.getMessage());
-            return;
         }
 
-        // 2 и 3. Обработка и сразу запись в файл
-        // По заданию: удалять по одному с головы, потом с хвоста, чередуя
-        try {
-            PrintWriter writer = new PrintWriter(new FileWriter(outputPath));
-            writer.println("Order,Name"); // Заголовок для понятного вывода
+        return deque;
+    }
 
-            int order = 1;
-            boolean fromHead = true; // флаг: true - берем с головы, false - с хвоста
+    /**
+     * Извлекает имена поочередно: сначала с начала (головы), затем с конца (хвоста).
+     */
+    private static List<String> processDeque(Deque<Character> deque) {
+        List<String> result = new ArrayList<>();
+        boolean takeFromHead = true;
 
-            while (!deque.isEmpty()) {
-                Character current;
+        while (!deque.isEmpty()) {
+            Character character;
 
-                if (fromHead) {
-                    current = deque.pollFirst(); // забираем первый элемент
-                } else {
-                    current = deque.pollLast();  // забираем последний элемент
-                }
-
-                if (current != null) {
-                    writer.println(order + "," + current.getName());
-                    order++;
-                }
-
-                // Меняем направление на следующее
-                fromHead = !fromHead;
+            if (takeFromHead) {
+                character = deque.pollFirst(); // забираем с головы
+            } else {
+                character = deque.pollLast();  // забираем с хвоста
             }
 
-            writer.close();
-            System.out.println("Готово! Результат сохранен в " + outputPath);
+            if (character != null) {
+                result.add(character.getName());
+            }
 
-        } catch (IOException e) {
-            System.out.println("Ошибка при записи файла: " + e.getMessage());
+            takeFromHead = !takeFromHead; // меняем сторону
+        }
+
+        return result;
+    }
+
+    /**
+     * Сохраняет порядок извлеченных имен в выходной текстовый файл.
+     */
+    private static void writeResults(String filePath, List<String> names) throws IOException {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
+            writer.println("Order,Name");
+
+            int order = 1;
+            for (String name : names) {
+                writer.println(order + "," + name);
+                order++;
+            }
         }
     }
 }
