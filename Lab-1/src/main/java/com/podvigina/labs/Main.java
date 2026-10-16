@@ -1,97 +1,108 @@
 package com.podvigina.labs;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Main {
 
+    // Обычный вспомогательный класс под объект из CSV
+    static class Character {
+        private int id;
+        private String name;
+
+        public Character(int id, String name) {
+            this.id = id;
+            this.name = name;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
     public static void main(String[] args) {
-        // Пути к файлам
-        String inputFile = "characters.csv";
-        String outputFile = "deque_result.txt";
+        String inputPath = "characters.csv";
+        String outputPath = "result.txt";
 
-        // Коллекция Deque (ArrayDeque)
-        Deque<String> charactersDeque = new ArrayDeque<>();
+        // По заданию используем Deque (ArrayDeque)
+        Deque<Character> deque = new ArrayDeque<>();
 
-        // ============ ЭТАП 1. ЧТЕНИЕ ============
-        try (BufferedReader br = new BufferedReader(
-                new InputStreamReader(new FileInputStream(inputFile), StandardCharsets.UTF_8))) {
+        // 1. Читаем данные из файла
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(inputPath));
 
-            String line;
-            boolean isHeader = true;
+            // Пропускаем шапку таблицы
+            String line = reader.readLine();
 
-            while ((line = br.readLine()) != null) {
-                // Пропускаем заголовок
-                if (isHeader) {
-                    isHeader = false;
+            while ((line = reader.readLine()) != null) {
+                // Если строка пустая, идем дальше
+                if (line.trim().isEmpty()) {
                     continue;
                 }
 
-                // Пропускаем пустые строки
-                if (line.trim().isEmpty()) continue;
-
-                // Разбиваем строку CSV по запятой
+                // Разбиваем по запятой
                 String[] parts = line.split(",");
 
-                // Имя — второй столбец (индекс 1)
-                if (parts.length > 1) {
+                if (parts.length >= 2) {
+                    int id = Integer.parseInt(parts[0].trim());
                     String name = parts[1].trim();
-                    charactersDeque.add(name); // добавляем в хвост очереди
+
+                    // Кладем в конец очереди
+                    deque.addLast(new Character(id, name));
                 }
             }
-            System.out.println("Загружено персонажей: " + charactersDeque.size());
+            reader.close();
+            System.out.println("Файл прочитан. Всего персонажей в очереди: " + deque.size());
 
         } catch (IOException e) {
-            System.err.println("Ошибка чтения файла: " + e.getMessage());
+            System.out.println("Ошибка при чтении файла: " + e.getMessage());
+            return;
+        } catch (NumberFormatException e) {
+            System.out.println("Ошибка парсинга числа: " + e.getMessage());
             return;
         }
 
-        // ============ ЭТАП 2. ОБРАБОТКА ============
-        // Чередуем извлечение: сначала с головы, потом с хвоста
-        List<String> extractedOrder = new ArrayList<>();
-        boolean fromHead = true; // флаг: true — с головы, false — с хвоста
+        // 2 и 3. Обработка и сразу запись в файл
+        // По заданию: удалять по одному с головы, потом с хвоста, чередуя
+        try {
+            PrintWriter writer = new PrintWriter(new FileWriter(outputPath));
+            writer.println("Order,Name"); // Заголовок для понятного вывода
 
-        while (!charactersDeque.isEmpty()) {
-            String name;
-            if (fromHead) {
-                name = charactersDeque.pollFirst(); // берём с головы
-                System.out.println("С головы: " + name);
-            } else {
-                name = charactersDeque.pollLast();  // берём с хвоста
-                System.out.println("С хвоста: " + name);
-            }
-            extractedOrder.add(name);
-            fromHead = !fromHead; // меняем сторону
-        }
+            int order = 1;
+            boolean fromHead = true; // флаг: true - берем с головы, false - с хвоста
 
-        // ============ ЭТАП 3. ЗАПИСЬ ============
-        try (BufferedWriter bw = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(outputFile), StandardCharsets.UTF_8))) {
+            while (!deque.isEmpty()) {
+                Character current;
 
-            bw.write("Порядок извлечения персонажей из Deque:");
-            bw.newLine();
-            bw.write("========================================");
-            bw.newLine();
+                if (fromHead) {
+                    current = deque.pollFirst(); // забираем первый элемент
+                } else {
+                    current = deque.pollLast();  // забираем последний элемент
+                }
 
-            int index = 1;
-            for (String name : extractedOrder) {
-                bw.write(index + ". " + name);
-                bw.newLine();
-                index++;
+                if (current != null) {
+                    writer.println(order + "," + current.getName());
+                    order++;
+                }
+
+                // Меняем направление на следующее
+                fromHead = !fromHead;
             }
 
-            bw.newLine();
-            bw.write("Всего извлечено: " + extractedOrder.size());
-            bw.newLine();
-
-            System.out.println("\nРезультат записан в файл: " + outputFile);
+            writer.close();
+            System.out.println("Готово! Результат сохранен в " + outputPath);
 
         } catch (IOException e) {
-            System.err.println("Ошибка записи файла: " + e.getMessage());
+            System.out.println("Ошибка при записи файла: " + e.getMessage());
         }
     }
 }
